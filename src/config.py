@@ -15,10 +15,14 @@ class Settings(BaseSettings):
     # Storage
     canvas_db_path: Path = Path("./data/canvas.db")
 
-    # Auth — comma-separated list of "tenant_id:api_key" pairs.
-    # Example: DELIVERABLE_CANVAS_TENANTS="dukestrategies:abc123,amaris:def456"
-    # Empty value disables auth (dev only) and resolves all calls to tenant "default".
-    deliverable_canvas_tenants: str = ""
+    # OAuth (Microsoft Entra ID) — see infra-docs/ai/deliverable-canvas.md
+    # When OAUTH_ENABLE=false, current_user_id() resolves to "local-dev".
+    oauth_enable: bool = False
+    oauth_client_id: str = ""
+    oauth_client_secret: str = ""
+    oauth_tenant_id: str = ""
+    oauth_base_url: str = ""
+    oauth_required_scopes: str = "mcp.access"
 
 
 settings = Settings()

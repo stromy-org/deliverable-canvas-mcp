@@ -1,71 +1,105 @@
-"""Tenant API-key resolver. Reads tenants from settings.deliverable_canvas_tenants.
+"""Authentication + user identity for the deliverable-canvas MCP.
 
-Format: "tenant_id:api_key,tenant_id:api_key"
+Two functions:
+
+- ``build_auth_provider()`` returns the FastMCP ``AzureProvider`` (or ``None`` when
+  ``OAUTH_ENABLE=false``). Wired into ``FastMCP(auth=...)`` in ``server.py``.
+- ``current_user_id()`` returns the identity of the calling user, derived from the
+  OAuth access token claims. Storage rows are scoped by this value so canvases are
+  per-user isolated even on a shared MCP.
+
+OAuth-disabled fallback: returns ``"local-dev"`` so the server is usable for local
+testing without an Azure round-trip. Disabling OAuth in production is a deployment
+error — the operator docs spell this out.
 """
 
 from __future__ import annotations
 
-from typing import Any
-
-from fastmcp.server.dependencies import get_http_request
-from starlette.requests import Request
+import logging
 
 from .config import settings
 
+logger = logging.getLogger(__name__)
+
 
 class AuthError(Exception):
-    """Raised when authentication fails. Surfaces as a tool error in FastMCP."""
+    """Raised when user identity cannot be resolved. Surfaces as a tool error in FastMCP."""
 
 
-def _load_tenant_keys() -> dict[str, str]:
-    raw = (settings.deliverable_canvas_tenants or "").strip()
-    if not raw:
-        return {}
-    out: dict[str, str] = {}
-    for pair in raw.split(","):
-        pair = pair.strip()
-        if not pair or ":" not in pair:
-            continue
-        key, value = pair.split(":", 1)
-        out[key.strip()] = value.strip()
-    return out
+def build_auth_provider():
+    """Return an ``AzureProvider`` when OAuth is enabled, else ``None``.
 
-
-def _api_key_to_tenant() -> dict[str, str]:
-    return {v: k for k, v in _load_tenant_keys().items()}
-
-
-def _request_or_none() -> Request | None:
-    try:
-        return get_http_request()
-    except Exception:
+    Mirrors the ``nl-gov-data`` / fastmcp-template pattern so operator setup is
+    identical across the org's MCPs.
+    """
+    if not settings.oauth_enable:
         return None
 
+    from fastmcp.server.auth.providers.azure import AzureProvider
 
-def resolve_tenant() -> str:
-    """Returns the tenant_id for the current request.
+    scopes = [s.strip() for s in settings.oauth_required_scopes.split(",") if s.strip()]
 
-    - HTTP transport: requires ``X-Tenant-Key`` header matching a configured tenant.
-    - stdio transport (no HTTP context): if exactly one tenant configured, return it;
-      otherwise raise AuthError. Disabled (empty mapping) → return "default" for dev.
+    missing = [
+        name
+        for name, value in (
+            ("OAUTH_CLIENT_ID", settings.oauth_client_id),
+            ("OAUTH_CLIENT_SECRET", settings.oauth_client_secret),
+            ("OAUTH_TENANT_ID", settings.oauth_tenant_id),
+            ("OAUTH_BASE_URL", settings.oauth_base_url),
+        )
+        if not value
+    ]
+    if not scopes:
+        missing.append("OAUTH_REQUIRED_SCOPES")
+    if missing:
+        raise RuntimeError(
+            "OAUTH_ENABLE=true but required Azure settings are missing: "
+            + ", ".join(missing)
+            + ". See infra-docs/ai/deliverable-canvas.md 'Auth' section."
+        )
+
+    if settings.fastmcp_transport == "stdio":
+        logger.warning(
+            "OAUTH_ENABLE=true with FASTMCP_TRANSPORT=stdio — "
+            "FastMCP auth is not applied to stdio transport."
+        )
+
+    return AzureProvider(
+        client_id=settings.oauth_client_id,
+        client_secret=settings.oauth_client_secret,
+        tenant_id=settings.oauth_tenant_id,
+        base_url=settings.oauth_base_url,
+        required_scopes=scopes,
+    )
+
+
+def current_user_id() -> str:
+    """Return the user identity for the current request.
+
+    Resolution order (first match wins):
+      1. ``email`` claim — human-readable, stable per Entra user
+      2. ``preferred_username`` claim — fallback for accounts without an email
+      3. ``sub`` claim — opaque but always present
+      4. ``"local-dev"`` literal when OAuth is disabled (dev mode only)
+
+    Raises ``AuthError`` when OAuth is enabled but no token / claims are available.
     """
-    mapping = _api_key_to_tenant()
-    request = _request_or_none()
+    if not settings.oauth_enable:
+        return "local-dev"
 
-    if not mapping:
-        # Auth disabled — dev only.
-        return "default"
+    try:
+        from fastmcp.server.dependencies import get_access_token
 
-    if request is None:
-        # No HTTP context (stdio). Single-tenant fallback.
-        if len(mapping) == 1:
-            return next(iter(mapping.values()))
-        raise AuthError("Authentication required: missing tenant context (stdio)")
+        token = get_access_token()
+    except Exception as e:
+        raise AuthError(f"no access token in request context: {e}") from e
 
-    api_key: Any = request.headers.get("x-tenant-key") or request.headers.get("X-Tenant-Key")
-    if not api_key:
-        raise AuthError("Missing X-Tenant-Key header")
-    tenant = mapping.get(str(api_key))
-    if tenant is None:
-        raise AuthError("Invalid tenant API key")
-    return tenant
+    if not token or not token.claims:
+        raise AuthError("access token present but claims missing")
+
+    for claim in ("email", "preferred_username", "sub"):
+        value = token.claims.get(claim)
+        if value:
+            return str(value)
+
+    raise AuthError("access token has no email/preferred_username/sub claim")

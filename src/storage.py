@@ -1,4 +1,8 @@
-"""SQLite-backed canvas storage. WAL mode + BEGIN IMMEDIATE for durable writes."""
+"""SQLite-backed canvas storage. WAL mode + BEGIN IMMEDIATE for durable writes.
+
+Scoped by ``user_id`` — populated from OAuth token claims by ``src.auth.current_user_id()``.
+Each user has their own isolated canvas pool, even on a shared MCP.
+"""
 
 from __future__ import annotations
 
@@ -27,7 +31,7 @@ class Section:
 @dataclass
 class Canvas:
     canvas_id: str
-    tenant_id: str
+    user_id: str
     deliverable_type: str
     client_id: str
     title: str
@@ -54,7 +58,7 @@ class CanvasFinalized(Exception):
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS canvas (
     canvas_id       TEXT PRIMARY KEY,
-    tenant_id       TEXT NOT NULL,
+    user_id         TEXT NOT NULL,
     deliverable_type TEXT NOT NULL,
     client_id       TEXT NOT NULL,
     title           TEXT NOT NULL,
@@ -64,8 +68,8 @@ CREATE TABLE IF NOT EXISTS canvas (
     created_ts      REAL NOT NULL,
     updated_ts      REAL NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_canvas_tenant_client_type
-    ON canvas(tenant_id, client_id, deliverable_type);
+CREATE INDEX IF NOT EXISTS idx_canvas_user_client_type
+    ON canvas(user_id, client_id, deliverable_type);
 
 CREATE TABLE IF NOT EXISTS section (
     canvas_id   TEXT NOT NULL,
@@ -93,7 +97,7 @@ CREATE TABLE IF NOT EXISTS revision (
 
 CREATE TABLE IF NOT EXISTS audit (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    tenant_id       TEXT NOT NULL,
+    user_id         TEXT NOT NULL,
     tool            TEXT NOT NULL,
     canvas_id       TEXT,
     section_id      TEXT,
@@ -105,7 +109,7 @@ CREATE TABLE IF NOT EXISTS audit (
 
 
 class CanvasStore:
-    """Single-file SQLite store. Safe for the pilot's single-tenant load."""
+    """Single-file SQLite store. Per-user isolation via ``user_id`` filter on every read/write."""
 
     def __init__(self, db_path: Path):
         self.db_path = Path(db_path)
@@ -140,7 +144,7 @@ class CanvasStore:
     def create_canvas(
         self,
         *,
-        tenant_id: str,
+        user_id: str,
         deliverable_type: str,
         client_id: str,
         title: str,
@@ -153,12 +157,12 @@ class CanvasStore:
         with self._write_tx() as conn:
             conn.execute(
                 "INSERT INTO canvas("
-                "canvas_id,tenant_id,deliverable_type,client_id,title,"
+                "canvas_id,user_id,deliverable_type,client_id,title,"
                 "template_id,meta_json,finalized,created_ts,updated_ts) "
                 "VALUES (?,?,?,?,?,?,?,0,?,?)",
                 (
                     canvas_id,
-                    tenant_id,
+                    user_id,
                     deliverable_type,
                     client_id,
                     title,
@@ -174,13 +178,13 @@ class CanvasStore:
                     " VALUES (?,?,?,'',0,?,?)",
                     (canvas_id, sec["id"], sec["title"], now, pos),
                 )
-        return self.get_canvas(tenant_id=tenant_id, canvas_id=canvas_id)
+        return self.get_canvas(user_id=user_id, canvas_id=canvas_id)
 
-    def get_canvas(self, *, tenant_id: str, canvas_id: str) -> Canvas:
+    def get_canvas(self, *, user_id: str, canvas_id: str) -> Canvas:
         with self._connect() as conn:
             row = conn.execute(
-                "SELECT * FROM canvas WHERE canvas_id=? AND tenant_id=?",
-                (canvas_id, tenant_id),
+                "SELECT * FROM canvas WHERE canvas_id=? AND user_id=?",
+                (canvas_id, user_id),
             ).fetchone()
             if row is None:
                 raise CanvasNotFound(canvas_id)
@@ -201,7 +205,7 @@ class CanvasStore:
         ]
         return Canvas(
             canvas_id=row["canvas_id"],
-            tenant_id=row["tenant_id"],
+            user_id=row["user_id"],
             deliverable_type=row["deliverable_type"],
             client_id=row["client_id"],
             title=row["title"],
@@ -216,7 +220,7 @@ class CanvasStore:
     def update_section(
         self,
         *,
-        tenant_id: str,
+        user_id: str,
         canvas_id: str,
         section_id: str,
         body: str,
@@ -227,8 +231,8 @@ class CanvasStore:
         body_hash = hashlib.sha256(body.encode("utf-8")).hexdigest()
         with self._write_tx() as conn:
             crow = conn.execute(
-                "SELECT finalized FROM canvas WHERE canvas_id=? AND tenant_id=?",
-                (canvas_id, tenant_id),
+                "SELECT finalized FROM canvas WHERE canvas_id=? AND user_id=?",
+                (canvas_id, user_id),
             ).fetchone()
             if crow is None:
                 raise CanvasNotFound(canvas_id)
@@ -263,10 +267,10 @@ class CanvasStore:
                 "UPDATE canvas SET updated_ts=? WHERE canvas_id=?", (now, canvas_id)
             )
             conn.execute(
-                "INSERT INTO audit(tenant_id,tool,canvas_id,section_id,instructed_by_user,body_hash,ts)"
+                "INSERT INTO audit(user_id,tool,canvas_id,section_id,instructed_by_user,body_hash,ts)"
                 " VALUES (?,?,?,?,?,?,?)",
                 (
-                    tenant_id,
+                    user_id,
                     "canvas_update_section",
                     canvas_id,
                     section_id,
@@ -286,14 +290,14 @@ class CanvasStore:
     def list_revisions(
         self,
         *,
-        tenant_id: str,
+        user_id: str,
         canvas_id: str,
         section_id: str | None,
     ) -> list[dict[str, Any]]:
         with self._connect() as conn:
             owner = conn.execute(
-                "SELECT 1 FROM canvas WHERE canvas_id=? AND tenant_id=?",
-                (canvas_id, tenant_id),
+                "SELECT 1 FROM canvas WHERE canvas_id=? AND user_id=?",
+                (canvas_id, user_id),
             ).fetchone()
             if owner is None:
                 raise CanvasNotFound(canvas_id)
@@ -311,12 +315,12 @@ class CanvasStore:
                 ).fetchall()
         return [dict(r) for r in rows]
 
-    def finalize(self, *, tenant_id: str, canvas_id: str) -> Canvas:
+    def finalize(self, *, user_id: str, canvas_id: str) -> Canvas:
         now = time.time()
         with self._write_tx() as conn:
             row = conn.execute(
-                "SELECT finalized FROM canvas WHERE canvas_id=? AND tenant_id=?",
-                (canvas_id, tenant_id),
+                "SELECT finalized FROM canvas WHERE canvas_id=? AND user_id=?",
+                (canvas_id, user_id),
             ).fetchone()
             if row is None:
                 raise CanvasNotFound(canvas_id)
@@ -326,22 +330,22 @@ class CanvasStore:
                     (now, canvas_id),
                 )
                 conn.execute(
-                    "INSERT INTO audit(tenant_id,tool,canvas_id,instructed_by_user,ts)"
+                    "INSERT INTO audit(user_id,tool,canvas_id,instructed_by_user,ts)"
                     " VALUES (?,?,?,0,?)",
-                    (tenant_id, "canvas_finalize", canvas_id, now),
+                    (user_id, "canvas_finalize", canvas_id, now),
                 )
-        return self.get_canvas(tenant_id=tenant_id, canvas_id=canvas_id)
+        return self.get_canvas(user_id=user_id, canvas_id=canvas_id)
 
     def list_canvases(
         self,
         *,
-        tenant_id: str,
+        user_id: str,
         client_id: str | None,
         deliverable_type: str | None,
         include_finalized: bool,
     ) -> list[dict[str, Any]]:
-        clauses = ["tenant_id=?"]
-        params: list[Any] = [tenant_id]
+        clauses = ["user_id=?"]
+        params: list[Any] = [user_id]
         if client_id is not None:
             clauses.append("client_id=?")
             params.append(client_id)

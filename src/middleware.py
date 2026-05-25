@@ -9,7 +9,25 @@ logger = logging.getLogger(__name__)
 
 
 def _identify_user() -> str:
+    """Best-effort user identity from the OAuth access token claims.
 
+    Falls back to ``"anonymous"`` when OAuth is disabled or the token is absent
+    (e.g. stdio transport). Storage scoping uses ``auth.current_user_id()`` which
+    is stricter — this is only for log fields.
+    """
+    try:
+        from fastmcp.server.dependencies import get_access_token
+
+        token = get_access_token()
+        if token and token.claims:
+            return (
+                token.claims.get("email")
+                or token.claims.get("preferred_username")
+                or token.claims.get("sub")
+                or "authenticated"
+            )
+    except Exception:
+        pass
     return "anonymous"
 
 

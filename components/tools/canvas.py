@@ -1,4 +1,8 @@
-"""Canvas tool surface — six tools, all writes durable before return."""
+"""Canvas tool surface — six tools, all writes durable before return.
+
+Scoped per-user via ``src.auth.current_user_id()`` (OAuth token claim). Each user has
+their own isolated canvas pool — no cross-user visibility even on a shared MCP.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +10,7 @@ from typing import Any
 
 from fastmcp.tools import tool
 
-from src.auth import AuthError, resolve_tenant
+from src.auth import AuthError, current_user_id
 from src.storage import CanvasFinalized, CanvasNotFound, SectionNotFound
 from src.store_singleton import store
 from src.template_loader import UnknownTemplate, load_template
@@ -52,7 +56,7 @@ def canvas_create(
     resuming agent can re-orient without conversation history.
     """
     try:
-        tenant = resolve_tenant()
+        user = current_user_id()
     except AuthError as e:
         raise ValueError(f"unauthorized: {e}") from e
     if template_id:
@@ -68,7 +72,7 @@ def canvas_create(
         "methodology_version": methodology_version,
     }
     canvas = store.create_canvas(
-        tenant_id=tenant,
+        user_id=user,
         deliverable_type=deliverable_type,
         client_id=client_id,
         title=title,
@@ -83,11 +87,11 @@ def canvas_create(
 def canvas_get(canvas_id: str) -> dict[str, Any]:
     """Return full canvas state."""
     try:
-        tenant = resolve_tenant()
+        user = current_user_id()
     except AuthError as e:
         raise ValueError(f"unauthorized: {e}") from e
     try:
-        canvas = store.get_canvas(tenant_id=tenant, canvas_id=canvas_id)
+        canvas = store.get_canvas(user_id=user, canvas_id=canvas_id)
     except CanvasNotFound as e:
         raise ValueError(f"canvas not found: {e}") from e
     return _canvas_dict(canvas)
@@ -103,12 +107,12 @@ def canvas_update_section(
 ) -> dict[str, Any]:
     """Append a revision to the section. The agent self-reports ``instructed_by_user``."""
     try:
-        tenant = resolve_tenant()
+        user = current_user_id()
     except AuthError as e:
         raise ValueError(f"unauthorized: {e}") from e
     try:
         sec = store.update_section(
-            tenant_id=tenant,
+            user_id=user,
             canvas_id=canvas_id,
             section_id=section_id,
             body=body,
@@ -133,11 +137,11 @@ def canvas_list_revisions(
 ) -> list[dict[str, Any]]:
     """Revision log. If section_id omitted, returns all revisions for the canvas."""
     try:
-        tenant = resolve_tenant()
+        user = current_user_id()
     except AuthError as e:
         raise ValueError(f"unauthorized: {e}") from e
     try:
-        return store.list_revisions(tenant_id=tenant, canvas_id=canvas_id, section_id=section_id)
+        return store.list_revisions(user_id=user, canvas_id=canvas_id, section_id=section_id)
     except CanvasNotFound as e:
         raise ValueError(f"canvas not found: {e}") from e
 
@@ -146,11 +150,11 @@ def canvas_list_revisions(
 def canvas_finalize(canvas_id: str) -> dict[str, Any]:
     """Mark canvas as finalized. Idempotent."""
     try:
-        tenant = resolve_tenant()
+        user = current_user_id()
     except AuthError as e:
         raise ValueError(f"unauthorized: {e}") from e
     try:
-        canvas = store.finalize(tenant_id=tenant, canvas_id=canvas_id)
+        canvas = store.finalize(user_id=user, canvas_id=canvas_id)
     except CanvasNotFound as e:
         raise ValueError(f"canvas not found: {e}") from e
     return _canvas_dict(canvas)
@@ -162,13 +166,13 @@ def canvas_list(
     deliverable_type: str | None = None,
     include_finalized: bool = True,
 ) -> list[dict[str, Any]]:
-    """List canvases for the calling tenant."""
+    """List canvases for the calling user."""
     try:
-        tenant = resolve_tenant()
+        user = current_user_id()
     except AuthError as e:
         raise ValueError(f"unauthorized: {e}") from e
     return store.list_canvases(
-        tenant_id=tenant,
+        user_id=user,
         client_id=client_id,
         deliverable_type=deliverable_type,
         include_finalized=include_finalized,
