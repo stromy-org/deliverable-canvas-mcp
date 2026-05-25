@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ title }}</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; }
+    header { border-bottom: 1px solid #ccc8; padding-bottom: 0.75rem; margin-bottom: 1.25rem; }
+    h1 { margin: 0; font-size: 1.4rem; }
+    .meta { font-size: 0.85rem; color: #6668; margin-top: 0.25rem; }
+    .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+    .badge.draft { background: #fde68a; color: #78350f; }
+    .badge.final { background: #bbf7d0; color: #065f46; }
+    .section { border: 1px solid #ccc4; border-radius: 8px; padding: 0.9rem 1.1rem; margin-bottom: 0.85rem; }
+    .section h2 { margin: 0 0 0.45rem 0; font-size: 1.05rem; }
+    .section .row { display: flex; justify-content: space-between; font-size: 0.75rem; color: #6668; margin-bottom: 0.3rem; }
+    .section .body p { margin: 0.4rem 0; }
+    .empty { color: #9999; font-style: italic; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>{{ title }}
+      {% if finalized %}<span class="badge final">finalized</span>{% else %}<span class="badge draft">draft</span>{% endif %}
+    </h1>
+    <div class="meta">{{ deliverable_type }} · client: {{ client_id }} · updated {{ updated }}</div>
+  </header>
+  {% for s in sections %}
+  <article class="section" id="section-{{ s.id }}">
+    <div class="row"><span>section <code>{{ s.id }}</code></span><span>rev {{ s.revision }} · {{ s.updated }}</span></div>
+    <h2>{{ s.title }}</h2>
+    <div class="body">{{ s.body_html | safe }}</div>
+  </article>
+  {% endfor %}
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Changes here will be overwritten by Copier; DO NOT edit manually.
+_commit: 6229f29
+_src_path: /Users/williammasquelier/Repositories/stromy-org/scaffolds/fastmcp-template
+author_email: william.masquelier@stromy.com.au
+author_name: William Masquelier
+azure_region: westeurope
+azure_resource_group: rg-deliverable-canvas-mcp
+description: Provider-portable canvas storage for strategic deliverables (proposals,
+    briefs, frameworks)
+enable_oauth: false
+github_owner: stromy-org
+github_repo: deliverable-canvas-mcp
+module_slug: deliverable_canvas
+package_slug: deliverable-canvas-mcp
+project_name: Deliverable Canvas MCP
+setup_azure: false

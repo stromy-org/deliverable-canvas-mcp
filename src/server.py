@@ -1,0 +1,46 @@
+"""Deliverable Canvas MCP (FastMCP 3.0).
+
+Uses FileSystemProvider for automatic component discovery from components/.
+"""
+
+from pathlib import Path
+
+from fastmcp import FastMCP
+from fastmcp.server.providers import FileSystemProvider
+from fastmcp.server.providers.skills import SkillsDirectoryProvider
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+
+from .config import settings
+from .logging import setup_logging
+from .middleware import ToolCallLoggingMiddleware
+
+setup_logging()
+
+PROJECT_ROOT = Path(__file__).parent.parent
+COMPONENTS_DIR = PROJECT_ROOT / "components"
+SKILLS_DIR = PROJECT_ROOT / "skills"
+
+mcp = FastMCP(
+    name="Deliverable Canvas MCP",
+    instructions="Provider-portable canvas storage for strategic deliverables (proposals, briefs, frameworks)",
+    version="0.1.0",
+    providers=[
+        FileSystemProvider(COMPONENTS_DIR, reload=settings.mcp_dev_mode),
+        SkillsDirectoryProvider(roots=SKILLS_DIR, reload=settings.mcp_dev_mode),
+    ],
+    middleware=[ToolCallLoggingMiddleware()],
+)
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health(request: Request) -> JSONResponse:
+    return JSONResponse({"status": "ok", "service": "deliverable-canvas-mcp"})
+
+
+if __name__ == "__main__":
+    transport_kwargs = {}
+    if settings.fastmcp_transport != "stdio":
+        transport_kwargs["host"] = settings.fastmcp_host
+        transport_kwargs["port"] = settings.fastmcp_port
+    mcp.run(transport=settings.fastmcp_transport, **transport_kwargs)  # type: ignore[arg-type]

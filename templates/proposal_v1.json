@@ -1,0 +1,13 @@
+{
+  "template_id": "proposal_v1",
+  "description": "Stromy/Duke Strategies consulting proposal section schema",
+  "sections": [
+    {"id": "context",     "title": "Context"},
+    {"id": "approach",    "title": "Approach"},
+    {"id": "scope",       "title": "Scope"},
+    {"id": "timeline",    "title": "Timeline"},
+    {"id": "pricing",     "title": "Pricing"},
+    {"id": "risks",       "title": "Risks"},
+    {"id": "next_steps",  "title": "Next Steps"}
+  ]
+}
