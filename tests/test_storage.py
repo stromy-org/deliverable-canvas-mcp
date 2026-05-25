@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.storage import CanvasFinalized, CanvasNotFound, CanvasStore, SectionNotFound
+from src.storage import CanvasFinalized, CanvasNotFound, CanvasStore
 
 
 def _mk_sections() -> list[dict[str, str]]:
@@ -76,7 +76,8 @@ def test_update_increments_revision_and_writes_log(store_for: CanvasStore):
     assert revs[1]["summary"] == "refine"
 
 
-def test_update_unknown_section(store_for: CanvasStore):
+def test_update_unknown_section_upserts(store_for: CanvasStore):
+    """Unknown section_id auto-creates the section (upsert semantics)."""
     c = store_for.create_canvas(
         user_id="t1",
         deliverable_type="proposal",
@@ -85,15 +86,42 @@ def test_update_unknown_section(store_for: CanvasStore):
         template_id=None,
         template_sections=_mk_sections(),
     )
-    with pytest.raises(SectionNotFound):
-        store_for.update_section(
-            user_id="t1",
-            canvas_id=c.canvas_id,
-            section_id="nope",
-            body="x",
-            summary=None,
-            instructed_by_user=False,
-        )
+    sec = store_for.update_section(
+        user_id="t1",
+        canvas_id=c.canvas_id,
+        section_id="executive_summary",
+        body="hello",
+        summary="first write",
+        instructed_by_user=True,
+    )
+    assert sec.id == "executive_summary"
+    assert sec.body == "hello"
+    assert sec.revision == 1
+    refreshed = store_for.get_canvas(user_id="t1", canvas_id=c.canvas_id)
+    new_section = next(s for s in refreshed.sections if s.id == "executive_summary")
+    assert new_section.title == "Executive Summary"
+
+
+def test_update_section_explicit_title(store_for: CanvasStore):
+    c = store_for.create_canvas(
+        user_id="t1",
+        deliverable_type="proposal",
+        client_id="c1",
+        title="X",
+        template_id=None,
+        template_sections=[],
+    )
+    store_for.update_section(
+        user_id="t1",
+        canvas_id=c.canvas_id,
+        section_id="intro",
+        body="b",
+        summary=None,
+        instructed_by_user=False,
+        title="Introduction & Context",
+    )
+    refreshed = store_for.get_canvas(user_id="t1", canvas_id=c.canvas_id)
+    assert refreshed.sections[0].title == "Introduction & Context"
 
 
 def test_finalize_idempotent_and_locks(store_for: CanvasStore):

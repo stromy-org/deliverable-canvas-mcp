@@ -11,7 +11,7 @@ from typing import Any
 from fastmcp.tools import tool
 
 from src.auth import AuthError, current_user_id
-from src.storage import CanvasFinalized, CanvasNotFound, SectionNotFound
+from src.storage import CanvasFinalized, CanvasNotFound
 from src.store_singleton import store
 from src.template_loader import UnknownTemplate, load_template
 
@@ -104,8 +104,14 @@ def canvas_update_section(
     body: str,
     summary: str | None = None,
     instructed_by_user: bool = False,
+    title: str | None = None,
 ) -> dict[str, Any]:
-    """Append a revision to the section. The agent self-reports ``instructed_by_user``."""
+    """Append a revision to the section (upserts: creates the section if it does not exist yet).
+
+    ``title`` is only used the first time a section is created — for templated sections it is
+    ignored. When omitted on creation, the title is derived from ``section_id`` (Title Case).
+    The agent self-reports ``instructed_by_user``.
+    """
     try:
         user = current_user_id()
     except AuthError as e:
@@ -118,11 +124,10 @@ def canvas_update_section(
             body=body,
             summary=summary,
             instructed_by_user=instructed_by_user,
+            title=title,
         )
     except CanvasNotFound as e:
         raise ValueError(f"canvas not found: {e}") from e
-    except SectionNotFound as e:
-        raise ValueError(f"section not found: {e}") from e
     except CanvasFinalized as e:
         raise ValueError(
             f"canvas is finalized; create a new canvas to continue editing: {e}"

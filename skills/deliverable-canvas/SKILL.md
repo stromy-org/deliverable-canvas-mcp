@@ -19,7 +19,7 @@ The MCP server `deliverable-canvas` exposes six tools:
 
 - `mcp__deliverable-canvas__canvas_create(deliverable_type, client_id, title, template_id?, brief?, opened_by_skill?, methodology_version?)`
 - `mcp__deliverable-canvas__canvas_get(canvas_id)`
-- `mcp__deliverable-canvas__canvas_update_section(canvas_id, section_id, body, summary?, instructed_by_user?)`
+- `mcp__deliverable-canvas__canvas_update_section(canvas_id, section_id, body, summary?, instructed_by_user?, title?)` — **upserts**: creates the section if it does not exist yet. `title` is only used on first creation (defaults to a Title-Cased `section_id`); for templated sections it is ignored.
 - `mcp__deliverable-canvas__canvas_list_revisions(canvas_id, section_id?)`
 - `mcp__deliverable-canvas__canvas_finalize(canvas_id)`
 - `mcp__deliverable-canvas__canvas_list(client_id?, deliverable_type?, include_finalized?)`
@@ -49,6 +49,8 @@ Immediately after create or resume, **emit the artifact** so the user has a visu
 ### 3. Update sections turn by turn
 
 When the user instructs a change ("make pricing more aggressive", "rewrite the approach"), call `canvas_update_section(canvas_id, section_id, body, summary="...", instructed_by_user=True)`. Then re-emit the artifact resource so the user sees the change.
+
+Section IDs are free-form snake_case strings. If you call `canvas_update_section` with a section that does not exist yet, it is created automatically — supply `title` to override the auto-derived display name (e.g. `title="Executive Summary"` for `section_id="executive_summary"`). Templated canvases (`canvas_create(..., template_id=...)`) pre-create a known section set; you can still add ad-hoc sections beyond the template by writing to a new `section_id`.
 
 For agent-initiated refinements (you spotted something to clean up), call with `instructed_by_user=False` — the audit log distinguishes the two.
 

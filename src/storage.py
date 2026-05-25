@@ -226,6 +226,7 @@ class CanvasStore:
         body: str,
         summary: str | None,
         instructed_by_user: bool,
+        title: str | None = None,
     ) -> Section:
         now = time.time()
         body_hash = hashlib.sha256(body.encode("utf-8")).hexdigest()
@@ -243,8 +244,21 @@ class CanvasStore:
                 (canvas_id, section_id),
             ).fetchone()
             if srow is None:
-                raise SectionNotFound(section_id)
-            new_rev = int(srow["revision"]) + 1
+                # Upsert: auto-create section when missing so canvases work
+                # without a template and tolerate agent-invented section_ids.
+                derived_title = title or section_id.replace("_", " ").replace("-", " ").title()
+                max_pos = conn.execute(
+                    "SELECT COALESCE(MAX(position), -1) AS m FROM section WHERE canvas_id=?",
+                    (canvas_id,),
+                ).fetchone()["m"]
+                conn.execute(
+                    "INSERT INTO section(canvas_id,section_id,title,body,revision,updated_ts,position)"
+                    " VALUES (?,?,?,'',0,?,?)",
+                    (canvas_id, section_id, derived_title, now, int(max_pos) + 1),
+                )
+                new_rev = 1
+            else:
+                new_rev = int(srow["revision"]) + 1
             conn.execute(
                 "UPDATE section SET body=?, revision=?, updated_ts=? WHERE canvas_id=? AND section_id=?",
                 (body, new_rev, now, canvas_id, section_id),
