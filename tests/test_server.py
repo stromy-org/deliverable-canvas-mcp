@@ -86,14 +86,16 @@ async def test_canvas_update_section_appends_revision(client):
     assert revs.data[1]["instructed_by_user"] == 0
 
 
-async def test_canvas_update_section_unknown_section(client):
+async def test_canvas_update_section_unknown_section_upserts(client):
+    """Unknown section_id auto-creates the section instead of erroring."""
     cid = await _create(client)
-    with pytest.raises(Exception) as ei:
-        await client.call_tool(
-            name="canvas_update_section",
-            arguments={"canvas_id": cid, "section_id": "nope", "body": "x"},
-        )
-    assert "section not found" in str(ei.value).lower()
+    res = await client.call_tool(
+        name="canvas_update_section",
+        arguments={"canvas_id": cid, "section_id": "extra_section", "body": "x"},
+    )
+    assert res.data["id"] == "extra_section"
+    assert res.data["body"] == "x"
+    assert res.data["revision"] == 1
 
 
 async def test_canvas_finalize_is_idempotent_and_locks_writes(client):
