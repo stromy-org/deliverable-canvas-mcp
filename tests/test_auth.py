@@ -1,4 +1,4 @@
-"""Auth resolution tests for the tenant API-key middleware."""
+"""Auth tests for the Microsoft Entra OAuth provider + per-user identity."""
 
 from __future__ import annotations
 
@@ -7,8 +7,9 @@ import sys
 import pytest
 
 
-def _reload_auth(monkeypatch: pytest.MonkeyPatch, tenants: str = ""):
-    monkeypatch.setenv("DELIVERABLE_CANVAS_TENANTS", tenants)
+def _reload_auth(monkeypatch: pytest.MonkeyPatch, **env: str):
+    for key, value in env.items():
+        monkeypatch.setenv(key.upper(), value)
     for mod in ["src.config", "src.auth"]:
         sys.modules.pop(mod, None)
     import importlib
@@ -16,17 +17,36 @@ def _reload_auth(monkeypatch: pytest.MonkeyPatch, tenants: str = ""):
     return importlib.import_module("src.auth")
 
 
-def test_disabled_auth_returns_default(monkeypatch: pytest.MonkeyPatch):
-    auth = _reload_auth(monkeypatch, "")
-    assert auth.resolve_tenant() == "default"
+def test_oauth_disabled_returns_local_dev(monkeypatch: pytest.MonkeyPatch):
+    auth = _reload_auth(monkeypatch, OAUTH_ENABLE="false")
+    assert auth.current_user_id() == "local-dev"
+    assert auth.build_auth_provider() is None
 
 
-def test_single_tenant_stdio_fallback(monkeypatch: pytest.MonkeyPatch):
-    auth = _reload_auth(monkeypatch, "only:key1")
-    assert auth.resolve_tenant() == "only"
+def test_oauth_enabled_missing_settings_raises(monkeypatch: pytest.MonkeyPatch):
+    auth = _reload_auth(
+        monkeypatch,
+        OAUTH_ENABLE="true",
+        OAUTH_CLIENT_ID="",
+        OAUTH_CLIENT_SECRET="",
+        OAUTH_TENANT_ID="",
+        OAUTH_BASE_URL="",
+        OAUTH_REQUIRED_SCOPES="",
+    )
+    with pytest.raises(RuntimeError, match="OAUTH_ENABLE=true"):
+        auth.build_auth_provider()
 
 
-def test_multi_tenant_no_context_raises(monkeypatch: pytest.MonkeyPatch):
-    auth = _reload_auth(monkeypatch, "a:k1,b:k2")
+def test_current_user_id_raises_without_token(monkeypatch: pytest.MonkeyPatch):
+    """When OAuth is on but the call happens outside an HTTP context (no token)."""
+    auth = _reload_auth(
+        monkeypatch,
+        OAUTH_ENABLE="true",
+        OAUTH_CLIENT_ID="dummy",
+        OAUTH_CLIENT_SECRET="dummy",
+        OAUTH_TENANT_ID="dummy",
+        OAUTH_BASE_URL="https://example.test",
+        OAUTH_REQUIRED_SCOPES="mcp.access",
+    )
     with pytest.raises(auth.AuthError):
-        auth.resolve_tenant()
+        auth.current_user_id()

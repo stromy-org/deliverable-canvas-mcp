@@ -11,6 +11,7 @@ from fastmcp.server.providers.skills import SkillsDirectoryProvider
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from .auth import build_auth_provider
 from .config import settings
 from .logging import setup_logging
 from .middleware import ToolCallLoggingMiddleware
@@ -29,6 +30,7 @@ mcp = FastMCP(
         FileSystemProvider(COMPONENTS_DIR, reload=settings.mcp_dev_mode),
         SkillsDirectoryProvider(roots=SKILLS_DIR, reload=settings.mcp_dev_mode),
     ],
+    auth=build_auth_provider(),
     middleware=[ToolCallLoggingMiddleware()],
 )
 

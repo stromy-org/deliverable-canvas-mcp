@@ -6,7 +6,7 @@ import json
 
 from fastmcp.resources import resource
 
-from src.auth import AuthError, resolve_tenant
+from src.auth import AuthError, current_user_id
 from src.renderer.artifact import render_canvas_html
 from src.storage import CanvasNotFound
 from src.store_singleton import store
@@ -16,11 +16,11 @@ from src.store_singleton import store
 def canvas_state(canvas_id: str) -> str:
     """JSON snapshot of canvas state — used by formatters and renderers."""
     try:
-        tenant = resolve_tenant()
+        user = current_user_id()
     except AuthError as e:
         raise ValueError(f"unauthorized: {e}") from e
     try:
-        c = store.get_canvas(tenant_id=tenant, canvas_id=canvas_id)
+        c = store.get_canvas(user_id=user, canvas_id=canvas_id)
     except CanvasNotFound as e:
         raise ValueError(f"canvas not found: {e}") from e
     return json.dumps(
@@ -45,11 +45,11 @@ def canvas_state(canvas_id: str) -> str:
 def canvas_artifact(canvas_id: str) -> str:
     """Populated read-only HTML artifact for Claude Desktop Live Artifact rendering."""
     try:
-        tenant = resolve_tenant()
+        user = current_user_id()
     except AuthError as e:
         raise ValueError(f"unauthorized: {e}") from e
     try:
-        c = store.get_canvas(tenant_id=tenant, canvas_id=canvas_id)
+        c = store.get_canvas(user_id=user, canvas_id=canvas_id)
     except CanvasNotFound as e:
         raise ValueError(f"canvas not found: {e}") from e
     return render_canvas_html(c)
