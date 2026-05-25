@@ -16,6 +16,7 @@ COPY README.md ./
 COPY src/ ./src/
 COPY components/ ./components/
 COPY skills/ ./skills/
+COPY templates/ ./templates/
 RUN uv sync --frozen --no-dev
 
 
