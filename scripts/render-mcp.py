@@ -30,6 +30,11 @@ Secret discipline: every value in env/headers/url that looks like a secret
 (matches password|token|secret|api[_-]?key|auth|bearer) must be a `${VAR}`
 reference. Literal values exit 2.
 
+Codex nuance: `[mcp_servers.*].env` does not interpolate `${VAR}` placeholders.
+For Codex only, renderer drops env entries whose values are `${VAR}` refs so the
+server inherits the already-exported parent-shell environment instead of
+receiving the literal placeholder string.
+
 Usage:
     render-mcp.py             # write all four files (skip files that don't apply)
     render-mcp.py --check     # exit 1 if any output differs from canonical
@@ -139,6 +144,27 @@ def _mcp_remote_wrapper(spec: dict) -> dict:
     return {"command": "npx", "args": ["mcp-remote", spec["url"]]}
 
 
+def _codex_env_payload(spec: dict) -> dict | None:
+    """Return only Codex-safe env entries.
+
+    Codex currently passes `${VAR}` strings through literally in `[mcp_servers.*].env`
+    instead of interpolating them. Rendering those placeholders would override a
+    correctly exported shell environment with unusable literal values such as
+    `${ODOO_TIMEOUT_SECONDS}`. Keep literal env values like PATH overrides, but
+    let `${VAR}` refs inherit from the parent process.
+    """
+    env = spec.get("env") or {}
+    if not env:
+        return None
+
+    rendered = {
+        key: value
+        for key, value in env.items()
+        if not (isinstance(value, str) and ENV_REF_RE.match(value))
+    }
+    return rendered or None
+
+
 def render_for_claude(servers: dict[str, dict]) -> dict:
     out: dict[str, dict] = {}
     for name, spec in filter_for("claude", servers).items():
@@ -171,7 +197,13 @@ def render_for_codex(servers: dict[str, dict]) -> dict:
                     payload[field] = spec[field]
             out[name] = payload
         elif spec.get("transport") in (None, "stdio"):
-            out[name] = _stdio_payload(spec, include_codex_extras=True)
+            payload = _stdio_payload(spec, include_codex_extras=True)
+            env = _codex_env_payload(spec)
+            if env:
+                payload["env"] = env
+            else:
+                payload.pop("env", None)
+            out[name] = payload
         else:
             # Codex 0.125+ supports native HTTP via [mcp_servers.<name>] http_url
             out[name] = {"url": spec["url"]}
