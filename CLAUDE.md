@@ -31,15 +31,37 @@ uv run python scripts/sync_skill_stubs.py --server deliverable-canvas-mcp-http -
 ```
 src/server.py          FastMCP entrypoint (`mcp` instance)
 src/config.py          Settings via pydantic-settings (reads .env)
+src/auth.py            OAuth provider builder (disabled by default)
+src/storage.py         Canvas persistence layer
+src/store_singleton.py Process-wide store instance
+src/template_loader.py Section template lookup
+src/renderer/          Read-only HTML artifact renderer
 
 components/tools/      @tool functions — auto-discovered, no registration
 components/resources/  @resource functions
 components/prompts/    @prompt functions
 skills/                Skill directories — exposed as skill:// resources via SkillsDirectoryProvider
 scripts/               Utility scripts (sync_skill_stubs.py)
-tests/test_server.py   in-memory Client(transport=mcp) tests
-
+tests/                 in-memory Client(transport=mcp) tests
 ```
+
+### Layout decision (flat `src/`)
+
+This MCP intentionally keeps `src/` flat (`src/server.py`, `src/storage.py`,
+...) rather than wrapping under `src/deliverable_canvas/`. The Copier answer
+`module_slug: deliverable_canvas` is therefore unused for path purposes — it
+remains in `.copier-answers.yml` for future-proofing but is not load-bearing
+here.
+
+Why: the codebase is small enough that the extra package level adds noise
+without payoff (single deployable, no `import deliverable_canvas` consumers,
+flat layout already works with `from src.server import mcp` everywhere).
+Adopting `src/deliverable_canvas/` is a low-priority follow-up; if you take
+it on, `copier update --trust --skip-answered` against the post-2026-05-26
+fastmcp-template will propose the structural move automatically.
+
+See `scaffolds/fastmcp-template/CHANGELOG.md` for the upstream template
+change that made `module_slug` load-bearing for new MCPs.
 
 ## Adding a component
 
