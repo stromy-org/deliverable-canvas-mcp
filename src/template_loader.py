@@ -1,11 +1,19 @@
-"""Load section schemas from templates/<template_id>.json."""
+"""Load section schemas from components/resources/templates/<template_id>.json.
+
+Templates live under the standard FastMCP ``components/resources/`` tree so
+they ship with the Docker image automatically (no Dockerfile customisation),
+and are also exposed as ``template://<id>`` MCP resources for LLM discovery
+(see ``components/resources/template_resources.py``).
+"""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
+TEMPLATES_DIR = (
+    Path(__file__).parent.parent / "components" / "resources" / "templates"
+)
 
 
 class UnknownTemplate(Exception):
