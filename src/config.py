@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,17 +10,15 @@ class Settings(BaseSettings):
     mcp_dev_mode: bool = False
     log_level: str = "INFO"
 
-    # Storage
-    canvas_db_path: Path = Path("./data/canvas.db")
-
     # OAuth (Microsoft Entra ID) — see infra-docs/ai/deliverable-canvas.md
-    # When OAUTH_ENABLE=false, current_user_id() resolves to "local-dev".
+    # OAUTH_REQUIRED_SCOPES is whitespace-delimited per OAuth 2.0 (RFC 6749).
+    # `offline_access` is required for refresh-token issuance.
     oauth_enable: bool = False
     oauth_client_id: str = ""
     oauth_client_secret: str = ""
     oauth_tenant_id: str = ""
     oauth_base_url: str = ""
-    oauth_required_scopes: str = "mcp.access"
+    oauth_required_scopes: str = "mcp.access offline_access"
 
 
 settings = Settings()

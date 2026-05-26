@@ -24,7 +24,10 @@ SKILLS_DIR = PROJECT_ROOT / "skills"
 
 mcp = FastMCP(
     name="Deliverable Canvas MCP",
-    instructions="Provider-portable canvas storage for strategic deliverables (proposals, briefs, frameworks)",
+    instructions=(
+        "Resource-only planning host for multi-section deliverables. "
+        "Exposes templates + methodology; the canvas itself is the chat artifact."
+    ),
     version="0.1.0",
     providers=[
         FileSystemProvider(COMPONENTS_DIR, reload=settings.mcp_dev_mode),

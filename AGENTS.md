@@ -1,6 +1,6 @@
 # Deliverable Canvas MCP
 
-Provider-portable canvas storage for strategic deliverables (proposals, briefs, frameworks)
+Resource-only planning host for multi-section deliverables (proposals, briefs, press releases, messaging frameworks). The MCP exposes **zero tools** — only templates and methodology as MCP resources. The canvas itself is the markdown artifact in the user's chat; the agent renders, validates, and packages it in chat. Matches the planned `stromy-format-mcp` pattern.
 
 > **AGENTS.md is the canonical instruction file** for this repo (cross-vendor standard).
 > `CLAUDE.md` and `.github/copilot-instructions.md` are generated from this file by
@@ -24,19 +24,38 @@ uv run python scripts/sync_skill_stubs.py --server deliverable-canvas-mcp-http -
 ```
 src/server.py          FastMCP entrypoint (`mcp` instance)
 src/config.py          Settings via pydantic-settings (reads .env)
-src/auth.py            OAuth provider builder (disabled by default)
-src/storage.py         Canvas persistence layer
-src/store_singleton.py Process-wide store instance
-src/template_loader.py Section template lookup
-src/renderer/          Read-only HTML artifact renderer
+src/auth.py            OAuth provider builder (Microsoft Entra ID)
+src/middleware.py      Tool-call logging middleware (used by audit)
 
-components/tools/      @tool functions — auto-discovered, no registration
-components/resources/  @resource functions
-components/prompts/    @prompt functions
+components/resources/  @resource functions — template:// and methodology://
+  ├─ template_resources.py     template://list, template://{template_id}
+  ├─ methodology_resources.py  methodology://planning-best-practices,
+  │                            methodology://rendering/{provider}
+  ├─ templates/                template JSON files
+  └─ methodology/              planning + rendering markdown files
+
 skills/                Skill directories — exposed as skill:// resources via SkillsDirectoryProvider
 scripts/               Utility scripts (sync_skill_stubs.py)
 tests/                 in-memory Client(transport=mcp) tests
 ```
+
+**No tools.** This MCP intentionally exposes zero `@tool` functions (resource-only,
+post-2026-05-26 refactor). See `skills/deliverable-canvas/SKILL.md` for the
+session protocol — the agent does all the work in chat.
+
+## Resource surface
+
+- `template://list` — JSON `{"templates": [<template_id>, …]}`.
+- `template://{template_id}` — template JSON with `description`,
+  `methodology_version`, and `sections: [{id, title, prompt_hint}]`.
+- `methodology://planning-best-practices` — universal planning ritual.
+- `methodology://rendering/{provider}` — host-specific rendering rules
+  (`provider` ∈ `{claude, cowork, codex}`).
+
+Auth gates *access* to these resources (framework-level). There is no per-user
+data to partition because there is no canvas data — the canvas lives in the
+user's chat as a markdown artifact with identifier
+`canvas-<canvas_id>-<deliverable_type>`.
 
 ### Layout decision (flat `src/`)
 
@@ -56,20 +75,21 @@ fastmcp-template will propose the structural move automatically.
 See `scaffolds/fastmcp-template/CHANGELOG.md` for the upstream template
 change that made `module_slug` load-bearing for new MCPs.
 
-## Adding a component
+## Adding a resource
 
-Drop a `.py` file into the right `components/` subdirectory — `FileSystemProvider` picks it up automatically:
+This MCP is resource-only. To add a new template or methodology variant, drop
+the data file in the right place — no Python edits needed:
 
-```python
-from fastmcp.tools import tool   # or: resources.resource / prompts.prompt
+- New deliverable template: drop a JSON file in
+  `components/resources/templates/<id>.json` matching the schema
+  `{template_id, description, methodology_version, sections: [{id, title, prompt_hint}]}`.
+- New rendering provider: drop `components/resources/methodology/rendering/<provider>.md`.
+- New universal methodology variant: edit
+  `components/resources/methodology/planning-best-practices.md`.
 
-@tool
-def my_tool(param: str) -> str:
-    """Description shown to the MCP client."""
-    return param
-```
-
-No import in `server.py` needed. Type-hint everything; docstring becomes the schema description.
+If you genuinely need a new `@resource` family (rare), drop a `.py` file in
+`components/resources/` — `FileSystemProvider` picks it up automatically.
+Do NOT add `@tool` functions; this MCP is resource-only by design.
 
 ## Adding a skill
 
@@ -116,6 +136,22 @@ Production runs on Azure Container Apps. The deploy path is:
 - `.github/workflows/deploy-aca.yml` builds on push to `main`, pushes to `ghcr.io/<owner>/<repo>`, then runs `az containerapp update`
 - ACA pulls the new image and rolls the revision
 - Liveness probe hits `GET /health` (defined in `src/server.py` via `@mcp.custom_route`)
-- Production transport is `streamable-http` on port 8080; `min-replicas=0` (scale-to-zero)
+- Production transport is `streamable-http` on port 8080; `min-replicas=0` (scale-to-zero — intentional)
+
+## Operational notes
+
+- **`min-replicas=0` is intentional.** Cold-start on first call after idle is
+  ~1–2 s; this is preferred over the ~$5–15/month savings vs `min-replicas=1`.
+- **OAuth `offline_access` scope is REQUIRED.** Without it the Claude app's
+  connector has no refresh token and surfaces "Reconnect" every ~1h when the
+  access token expires. `OAUTH_REQUIRED_SCOPES` is **whitespace-delimited**
+  per OAuth 2.0 (RFC 6749); `src/auth.py` is the authoritative parser.
+  Required value: `"mcp.access offline_access"`.
+- **Artifact identifier convention.** The agent emits the canvas as a markdown
+  artifact in chat with identifier `canvas-<canvas_id>-<deliverable_type>`
+  where `<canvas_id>` is an 8-character hex generated once per session. The
+  same identifier is reused for every emission in the session; different
+  sessions MUST use different identifiers to prevent cross-chat version-history
+  collisions.
 
 One-time `az` CLI setup is documented in `README.md` → "Deploy to Azure Container Apps". Don't invent a different deploy path; extend this one.
