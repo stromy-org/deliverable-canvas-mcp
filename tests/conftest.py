@@ -1,4 +1,8 @@
-"""Test fixtures. Each test gets a fresh tmp SQLite store + in-memory FastMCP Client."""
+"""Test fixtures.
+
+The MCP is resource-only (zero tools, no DB). Tests use an in-memory FastMCP
+``Client`` against the live ``mcp`` instance — no temp files, no storage setup.
+"""
 
 from __future__ import annotations
 
@@ -13,36 +17,15 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 @pytest.fixture
-def tmp_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    db = tmp_path / "canvas.db"
-    monkeypatch.setenv("CANVAS_DB_PATH", str(db))
-    # Reload only modules that captured settings at import time. Do NOT pop src.storage
-    # — its exception classes are imported into test modules, and re-importing would
-    # create new class objects that pytest.raises wouldn't match.
-    for mod in [
-        "src.config",
-        "src.store_singleton",
-        "src.auth",
-        "src.server",
-        "components.tools.canvas",
-        "components.resources.canvas_resources",
-    ]:
+async def client(monkeypatch: pytest.MonkeyPatch):
+    # Ensure OAuth is off for in-memory tests; auth is enforced at deploy time.
+    monkeypatch.setenv("OAUTH_ENABLE", "false")
+    for mod in ["src.config", "src.auth", "src.server"]:
         sys.modules.pop(mod, None)
-    return db
 
-
-@pytest.fixture
-async def client(tmp_db: Path):
     from fastmcp.client import Client
 
     from src.server import mcp
 
     async with Client(transport=mcp) as c:
         yield c
-
-
-@pytest.fixture
-def store_for(tmp_db: Path):
-    from src.storage import CanvasStore
-
-    return CanvasStore(tmp_db)

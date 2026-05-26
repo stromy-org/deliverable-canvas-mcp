@@ -1,13 +1,42 @@
 {
   "template_id": "proposal_v1",
-  "description": "Stromy/Duke Strategies consulting proposal section schema",
+  "description": "Stromy/Duke Strategies consulting proposal section schema.",
+  "methodology_version": "1.0",
   "sections": [
-    {"id": "context",     "title": "Context"},
-    {"id": "approach",    "title": "Approach"},
-    {"id": "scope",       "title": "Scope"},
-    {"id": "timeline",    "title": "Timeline"},
-    {"id": "pricing",     "title": "Pricing"},
-    {"id": "risks",       "title": "Risks"},
-    {"id": "next_steps",  "title": "Next Steps"}
+    {
+      "id": "context",
+      "title": "Context",
+      "prompt_hint": "What is the client's current situation, what triggered this engagement, and what is the time horizon? Capture the business problem in the client's own language."
+    },
+    {
+      "id": "approach",
+      "title": "Approach",
+      "prompt_hint": "How will we tackle it? Name the methodology or framework, and what makes our approach a fit for THIS client (not a generic pitch)."
+    },
+    {
+      "id": "scope",
+      "title": "Scope",
+      "prompt_hint": "What is in scope and (importantly) what is out of scope? Be specific about deliverables, working sessions, and boundaries."
+    },
+    {
+      "id": "timeline",
+      "title": "Timeline",
+      "prompt_hint": "Phase-by-phase plan with weeks or sprints. Note dependencies on client availability and any external gating events."
+    },
+    {
+      "id": "pricing",
+      "title": "Pricing",
+      "prompt_hint": "Commercial structure - fixed fee, T&M, retainer, milestone - with totals. Reflect the value framing from Context, not just a rate card."
+    },
+    {
+      "id": "risks",
+      "title": "Risks",
+      "prompt_hint": "Three to five real risks with mitigations. Skip generic boilerplate; pick risks specific to this engagement."
+    },
+    {
+      "id": "next_steps",
+      "title": "Next Steps",
+      "prompt_hint": "Concrete next actions the client can take this week to move forward - sign-off, kickoff date, intro to stakeholders."
+    }
   ]
 }

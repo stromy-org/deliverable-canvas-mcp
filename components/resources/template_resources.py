@@ -2,13 +2,17 @@
 
 Templates live as JSON files under ``components/resources/templates/<id>.json``
 so they are part of the standard FastMCP components tree (and therefore
-automatically copied into the Docker image alongside tools/resources/prompts).
+automatically copied into the Docker image alongside resources/prompts).
 
-Exposed as MCP resources so the LLM can discover and inspect available
-templates before calling ``canvas_create(template_id=...)``:
+Exposed as MCP resources so the agent can discover and inspect available
+templates before starting a canvas session:
 
 - ``template://list``           → JSON array of available template IDs
-- ``template://{template_id}``  → full template JSON (sections, description)
+- ``template://{template_id}``  → full template JSON (description, methodology_version,
+  sections: [{id, title, prompt_hint}, ...])
+
+The MCP is resource-only (no tools) — the agent renders the canvas in chat
+based on the template's section layout and ``prompt_hint`` per section.
 """
 
 from __future__ import annotations
@@ -29,13 +33,13 @@ def _list_ids() -> list[str]:
 
 @resource("template://list")
 def template_list() -> str:
-    """Available canvas template IDs — call before ``canvas_create`` to pick one."""
+    """Available canvas template IDs — call before reading a specific template."""
     return json.dumps({"templates": _list_ids()}, indent=2)
 
 
 @resource("template://{template_id}")
 def template_schema(template_id: str) -> str:
-    """Full template JSON: ``{template_id, description, sections: [{id, title}, ...]}``."""
+    """Full template JSON: ``{template_id, description, methodology_version, sections}``."""
     path = TEMPLATES_DIR / f"{template_id}.json"
     if not path.is_file():
         known = ", ".join(_list_ids()) or "(none)"

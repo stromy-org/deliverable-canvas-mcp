@@ -26,7 +26,7 @@ def _identify_user() -> str:
                 or token.claims.get("sub")
                 or "authenticated"
             )
-    except Exception:
+    except Exception:  # noqa: S110 — best-effort identity for log fields only
         pass
     return "anonymous"
 

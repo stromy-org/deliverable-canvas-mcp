@@ -1,12 +1,12 @@
-"""Authentication + user identity for the deliverable-canvas MCP.
+"""Authentication for the deliverable-canvas MCP.
 
-Two functions:
+The MCP is resource-only (zero tools, no DB) — OAuth gates *access* to the
+resource surface but there is no per-user data to partition.
 
 - ``build_auth_provider()`` returns the FastMCP ``AzureProvider`` (or ``None`` when
   ``OAUTH_ENABLE=false``). Wired into ``FastMCP(auth=...)`` in ``server.py``.
-- ``current_user_id()`` returns the identity of the calling user, derived from the
-  OAuth access token claims. Storage rows are scoped by this value so canvases are
-  per-user isolated even on a shared MCP.
+- ``current_user_id()`` is retained as a utility for audit-log middleware so the
+  ``ToolCallLoggingMiddleware`` can record who read what resource.
 
 OAuth-disabled fallback: returns ``"local-dev"`` so the server is usable for local
 testing without an Azure round-trip. Disabling OAuth in production is a deployment
@@ -37,7 +37,11 @@ def build_auth_provider():
 
     from fastmcp.server.auth.providers.azure import AzureProvider
 
-    scopes = [s.strip() for s in settings.oauth_required_scopes.split(",") if s.strip()]
+    # OAUTH_REQUIRED_SCOPES is whitespace-delimited per OAuth 2.0 (RFC 6749).
+    # `offline_access` is required for refresh-token issuance — without it the
+    # connector surfaces "Reconnect" prompts every ~1h when the access token
+    # expires.
+    scopes = [s for s in settings.oauth_required_scopes.split() if s]
 
     missing = [
         name

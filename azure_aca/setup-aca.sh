@@ -279,7 +279,10 @@ setup_oauth_app() {
   OAUTH_CLIENT_SECRET="$secret_output"
   OAUTH_TENANT_ID_VAL="$TENANT_ID"
   OAUTH_BASE_URL="$base_url"
-  OAUTH_REQUIRED_SCOPES="mcp.access"
+  # Whitespace-delimited per OAuth 2.0 RFC 6749. `offline_access` is REQUIRED
+  # so the connector receives a refresh token (silent re-auth) — without it,
+  # users see the "Reconnect" prompt every ~1h when the access token expires.
+  OAUTH_REQUIRED_SCOPES="mcp.access offline_access"
 
   ok "OAuth app registration complete"
 }
@@ -301,7 +304,7 @@ OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
 OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
 OAUTH_TENANT_ID=${OAUTH_TENANT_ID_VAL}
 OAUTH_BASE_URL=${OAUTH_BASE_URL}
-OAUTH_REQUIRED_SCOPES=${OAUTH_REQUIRED_SCOPES}
+OAUTH_REQUIRED_SCOPES="${OAUTH_REQUIRED_SCOPES}"
 EOF
 
   ok "OAuth credentials written to .env"
