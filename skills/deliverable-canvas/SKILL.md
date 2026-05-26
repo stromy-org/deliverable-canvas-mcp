@@ -24,10 +24,12 @@ The MCP server `deliverable-canvas` exposes six tools:
 - `mcp__deliverable-canvas__canvas_finalize(canvas_id)`
 - `mcp__deliverable-canvas__canvas_list(client_id?, deliverable_type?, include_finalized?)`
 
-And two MCP resources per canvas:
+And four MCP resources:
 
 - `canvas://<canvas_id>/state` — JSON snapshot for formatters and programmatic readers
 - `canvas://<canvas_id>/artifact` — populated HTML for Claude Desktop Live Artifact rendering
+- `template://list` — JSON array of available `template_id` values (call before `canvas_create` to see what's on offer)
+- `template://<template_id>` — full template schema (`{template_id, description, sections: [{id, title}, ...]}`)
 
 ## Protocol — what every strategic skill MUST do
 
@@ -64,7 +66,7 @@ When the user signals the deliverable is ready, call `canvas_finalize(canvas_id)
 
 - **MCP unreachable.** Surface the error to the user. Ask: *"deliverable-canvas-mcp is not reachable. (a) wait, (b) draft inline without persistence?"* Never silently degrade — if you draft inline, banner the response so the user knows there's no canvas to resume from.
 - **Canvas finalized but user wants to edit.** Offer: *"This canvas is finalized. Create a v2 canvas with these sections as starting bodies, or open a fresh canvas?"* Do not silently unlock.
-- **Template not found.** `canvas_create` will list known templates in the error. Ask the user which to use, or create a new template under `MCPs/deliverable-canvas-mcp/templates/<name>.json`.
+- **Template not found.** `canvas_create` lists known templates in the error message. Before creating a canvas you can also call `ReadMcpResourceTool(uri="template://list")` to enumerate the available IDs, then `ReadMcpResourceTool(uri="template://<id>")` to inspect a specific template's section layout. New templates are added by dropping a JSON file in `MCPs/deliverable-canvas-mcp/components/resources/templates/<name>.json`.
 
 ## References
 
