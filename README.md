@@ -1,6 +1,6 @@
 # Deliverable Canvas MCP
 
-Provider-portable canvas storage for strategic deliverables (proposals, briefs, frameworks)
+Resource-only MCP for strategic deliverable canvases (proposals, briefs, frameworks). Exposes templates, methodology guidance, and the canonical `deliverable-canvas` skill — **zero tools**. The chat artifact is the canvas; iteration happens in chat, not on the server. No per-user storage, no SQLite, no resume.
 
 Built with [FastMCP 3.0](https://gofastmcp.com) and managed with [uv](https://docs.astral.sh/uv/).
 
