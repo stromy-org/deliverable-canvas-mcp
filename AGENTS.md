@@ -59,7 +59,7 @@ user's chat as a markdown artifact with identifier
 
 ### Layout decision (flat `src/`)
 
-This MCP intentionally keeps `src/` flat (`src/server.py`, `src/storage.py`,
+This MCP intentionally keeps `src/` flat (`src/server.py`, `src/auth.py`,
 ...) rather than wrapping under `src/deliverable_canvas/`. The Copier answer
 `module_slug: deliverable_canvas` is therefore unused for path purposes — it
 remains in `.copier-answers.yml` for future-proofing but is not load-bearing
