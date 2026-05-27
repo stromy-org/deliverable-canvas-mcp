@@ -87,8 +87,9 @@ validating, packaging) happens in chat under your control.
    `methodology_version` is read from the template JSON's top-level field
    (authoritative source). `client_id` is top-level (not under `meta`) so the
    formatter can resolve brand assets directly. `client_id` comes from the
-   invoking plugin's `companies/` directory per the org-wide skill-data-loading
-   convention.
+   invoking plugin's companies directory (the org-wide skill-data-loading
+   convention applies in the *formatter* — this canvas skill itself does not
+   read client-data; it only passes the `client_id` through in the envelope).
 8. **Hand off to the formatter.** Invoke the formatter skill (`pptx`, `docx`,
    …) with `{envelope}` as its input.
 
