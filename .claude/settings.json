@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(az account show:*)",
+      "Bash(az ad app list:*)",
+      "Bash(az ad app show:*)",
+      "Bash(az ad sp show:*)",
+      "Bash(az ad sp list:*)",
+      "Bash(az ad sp create --id *)",
+      "Bash(az ad app permission add --id * --api * --api-permissions *)",
+      "Bash(az ad app permission grant --id * --api * --scope *)",
+      "Bash(az containerapp show --name deliverable-canvas-mcp --resource-group rg-deliverable-canvas-mcp-ne:*)",
+      "Bash(az containerapp list:*)",
+      "Bash(az containerapp revision list --name deliverable-canvas-mcp --resource-group rg-deliverable-canvas-mcp-ne:*)",
+      "Bash(az containerapp logs show --name deliverable-canvas-mcp --resource-group rg-deliverable-canvas-mcp-ne:*)",
+      "Bash(az containerapp update --name deliverable-canvas-mcp --resource-group rg-deliverable-canvas-mcp-ne --set-env-vars *)",
+      "Bash(az containerapp update --name deliverable-canvas-mcp --resource-group rg-deliverable-canvas-mcp-ne --remove-env-vars *)"
+    ]
+  }
+}
