@@ -7,7 +7,6 @@ from pathlib import Path
 
 from fastmcp import FastMCP
 from fastmcp.server.providers import FileSystemProvider
-from fastmcp.server.providers.skills import SkillsDirectoryProvider
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -20,18 +19,20 @@ setup_logging()
 
 PROJECT_ROOT = Path(__file__).parent.parent
 COMPONENTS_DIR = PROJECT_ROOT / "components"
-SKILLS_DIR = PROJECT_ROOT / "skills"
 
 mcp = FastMCP(
     name="Deliverable Canvas MCP",
     instructions=(
-        "Resource-only planning host for multi-section deliverables. "
-        "Exposes templates + methodology; the canvas itself is the chat artifact."
+        "Planning host for multi-section deliverables. Exposes templates + "
+        "methodology as resources; the canvas itself is the chat artifact.\n\n"
+        "The deliverable-canvas skill (procedural guide) is hosted as files "
+        'under skills/. Call fs_list("skills") to discover it, then '
+        'fs_read("skills/deliverable-canvas/SKILL.md") to load it and follow '
+        "its instructions. fs_read / fs_list are the only tools."
     ),
     version="0.1.0",
     providers=[
         FileSystemProvider(COMPONENTS_DIR, reload=settings.mcp_dev_mode),
-        SkillsDirectoryProvider(roots=SKILLS_DIR, reload=settings.mcp_dev_mode),
     ],
     auth=build_auth_provider(),
     middleware=[ToolCallLoggingMiddleware()],

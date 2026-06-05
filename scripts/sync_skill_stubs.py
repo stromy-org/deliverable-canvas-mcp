@@ -90,24 +90,25 @@ def render_stub(
         "## Loading instructions",
         "",
         "1. Read the main skill instructions:",
-        f'   → `ReadMcpResourceTool(server="{server}", uri="skill://{name}/SKILL.md")`',
+        f'   → call the `fs_read` tool on the `{server}` MCP with'
+        f' `path="skills/{name}/SKILL.md"`.',
         "",
     ]
 
     step = 2
     if references:
-        lines.append(f"{step}. Read reference files on demand:")
+        lines.append(f"{step}. Read reference files on demand (`fs_read` with these paths):")
         for ref in references:
-            lines.append(f"   - `skill://{name}/{ref}`")
+            lines.append(f"   - `skills/{name}/{ref}`")
         lines.append("")
         step += 1
 
     lines.append(
-        f"{step}. Optionally read the manifest to discover all available files and their sizes:"
+        f"{step}. To discover every file in this skill, call `fs_list` with"
+        f' `path="skills/{name}"`.'
     )
-    lines.append(f'   → `ReadMcpResourceTool(server="{server}", uri="skill://{name}/_manifest")`')
     lines.append("")
-    lines.append("Follow the instructions returned by the MCP resource exactly.")
+    lines.append("Follow the instructions returned by the MCP exactly.")
     lines.append("")
     return "\n".join(lines)
 

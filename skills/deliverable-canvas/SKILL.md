@@ -1,6 +1,6 @@
 ---
 name: deliverable-canvas
-description: Run the planning ritual for a multi-section deliverable (proposal, brief, press release, messaging framework) before handing off to a formatter skill. The MCP is resource-only — no tools — and the canvas IS the chat artifact. You read templates and methodology, render the markdown artifact, validate it, and construct a handoff envelope, all in chat.
+description: Run the planning ritual for a multi-section deliverable (proposal, brief, press release, messaging framework) before handing off to a formatter skill. The MCP has no domain tools — the canvas IS the chat artifact. You read templates and methodology, render the markdown artifact, validate it, and construct a handoff envelope, all in chat.
 ---
 
 # Deliverable Canvas — Planning Ritual

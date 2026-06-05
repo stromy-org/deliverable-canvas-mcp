@@ -1,6 +1,6 @@
 # Deliverable Canvas MCP
 
-Resource-only planning host for multi-section deliverables (proposals, briefs, press releases, messaging frameworks). The MCP exposes **zero tools** — only templates and methodology as MCP resources. The canvas itself is the markdown artifact in the user's chat; the agent renders, validates, and packages it in chat. Matches the planned `stromy-format-mcp` pattern.
+Planning host for multi-section deliverables (proposals, briefs, press releases, messaging frameworks). The MCP exposes templates and methodology as MCP resources and the `deliverable-canvas` skill via the generic `fs_read` / `fs_list` tools (resources are invisible in most MCP clients, so the skill ships as files). **No domain tools** — only those two generic read tools. The canvas itself is the markdown artifact in the user's chat; the agent renders, validates, and packages it in chat.
 
 > **AGENTS.md is the canonical instruction file** for this repo (cross-vendor standard).
 > `CLAUDE.md` and `.github/copilot-instructions.md` are generated from this file by
@@ -34,14 +34,15 @@ components/resources/  @resource functions — template:// and methodology://
   ├─ templates/                template JSON files
   └─ methodology/              planning + rendering markdown files
 
-skills/                Skill directories — exposed as skill:// resources via SkillsDirectoryProvider
+skills/                Skill directories — served to any client via the fs_read/fs_list tools
 scripts/               Utility scripts (sync_skill_stubs.py)
 tests/                 in-memory Client(transport=mcp) tests
 ```
 
-**No tools.** This MCP intentionally exposes zero `@tool` functions (resource-only,
-post-2026-05-26 refactor). See `skills/deliverable-canvas/SKILL.md` for the
-session protocol — the agent does all the work in chat.
+**No domain tools.** The only `@tool` functions are the generic `fs_read` /
+`fs_list` (skill exposure, in `components/tools/fs_tools.py`). See
+`skills/deliverable-canvas/SKILL.md` for the session protocol — the agent does
+all the work in chat.
 
 ## Resource surface
 
@@ -89,7 +90,8 @@ the data file in the right place — no Python edits needed:
 
 If you genuinely need a new `@resource` family (rare), drop a `.py` file in
 `components/resources/` — `FileSystemProvider` picks it up automatically.
-Do NOT add `@tool` functions; this MCP is resource-only by design.
+Do NOT add domain `@tool` functions — keep the tool surface to the generic
+`fs_read` / `fs_list`; templates and methodology stay resources.
 
 ## Adding a skill
 
@@ -99,10 +101,10 @@ Create a subdirectory under `skills/` with a `SKILL.md` file:
 skills/
 └── my-skill/
     ├── SKILL.md          # Required — main instruction file (frontmatter: name, description)
-    └── references/       # Optional — supporting files accessible via skill://<name>/{path}
+    └── references/       # Optional — read via fs_read("skills/<name>/references/<file>")
 ```
 
-Skills are exposed as MCP resources with `skill://` URI scheme. Clients discover skills via `list_resources()` and read them via `read_resource("skill://<name>/SKILL.md")`. `SkillsDirectoryProvider` handles discovery — no registration needed.
+Skills are served through the generic `fs_read` / `fs_list` tools (not `skill://` resources — most MCP clients surface only tools). Clients discover skills via `fs_list("skills")` and read them via `fs_read("skills/<name>/SKILL.md")`. `FileSystemProvider` auto-discovers the fs tools in `components/tools/` — no registration needed.
 
 ## Config
 
