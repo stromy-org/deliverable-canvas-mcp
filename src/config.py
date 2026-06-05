@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     mcp_dev_mode: bool = False
     log_level: str = "INFO"
 
+    # Roots the generic fs_read / fs_list tools may serve (relative to repo root).
+    fs_roots: list[str] = ["skills"]
+
     # OAuth (Microsoft Entra ID) — see infra-docs/ai/deliverable-canvas.md
     # OAUTH_REQUIRED_SCOPES is whitespace-delimited per OAuth 2.0 (RFC 6749).
     # `offline_access` is required for refresh-token issuance.

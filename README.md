@@ -33,7 +33,7 @@ components/
 ├── resources/             @resource functions, auto-discovered
 └── prompts/               @prompt functions, auto-discovered
 skills/
-└── server-guide/          Example skill, exposed as skill:// resources
+└── deliverable-canvas/    Skill, served via the fs_read/fs_list tools
 tests/                     pytest + in-memory FastMCP Client
 ```
 
@@ -44,10 +44,10 @@ in `.env` to enable hot-reload during development.
 
 ### Skills
 
-The `skills/` directory exposes skill folders as MCP resources using the
-`skill://` URI scheme. Each subdirectory with a `SKILL.md` becomes
-discoverable via `list_resources()`. Clients read skill content with
-`read_resource("skill://<name>/SKILL.md")`.
+The `skills/` directory is served through the generic `fs_read` / `fs_list`
+tools (not `skill://` resources — most MCP clients surface only tools). Each
+subdirectory with a `SKILL.md` is discoverable via `fs_list("skills")`; clients
+read skill content with `fs_read("skills/<name>/SKILL.md")`.
 
 Drop a new folder into `skills/` with a `SKILL.md` — no registration needed.
 
