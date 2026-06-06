@@ -10,7 +10,7 @@ AAIF, Dec 2025). Targets, as of 2026-05-19:
 Gemini CLI reads AGENTS.md directly via `context.fileName: ["AGENTS.md"]` in
 `.gemini/settings.json` — no GEMINI.md needed. Codex CLI reads AGENTS.md
 natively. If a stale `GEMINI.md` exists, this script deletes it (the convergence
-pass — see SCAFFOLDING_REFACTOR_PLAN.md §0).
+pass).
 
 Optional per-agent overrides (appended after a `---` separator):
     .agent-overrides/claude.md     → CLAUDE.md
