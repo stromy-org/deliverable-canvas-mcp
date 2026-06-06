@@ -1,5 +1,5 @@
 ---
-name: deliverable-canvas
+name: canvas-deliverable
 description: Run the planning ritual for a multi-section deliverable (proposal, brief, press release, messaging framework) before handing off to a formatter skill. The MCP has no domain tools — the canvas IS the chat artifact. You read templates and methodology, render the markdown artifact, validate it, and construct a handoff envelope, all in chat.
 ---
 
@@ -125,6 +125,6 @@ skill body; this skill exists as the canonical reference.
 
 ## Reference
 
-- Live SKILL.md (canonical): `MCPs/deliverable-canvas-mcp/skills/deliverable-canvas/SKILL.md`
+- Live SKILL.md (canonical): `MCPs/deliverable-canvas-mcp/skills/canvas-deliverable/SKILL.md`
 - Stubs distributed via `stromy-org/scripts/sync-mcp-skill-stubs.py` to consuming plugins
 - Methodology source files: `MCPs/deliverable-canvas-mcp/components/resources/methodology/`
