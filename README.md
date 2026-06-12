@@ -1,5 +1,7 @@
 # Deliverable Canvas MCP
 
+> **⚠️ RETIRED (2026-06-12) — decommission pending.** This MCP is de-wired from **all** client plugins; the canvas protocol now lives inline in each strategic skill (`proposal`, `messaging-framework`, `press-release`, `organic-social-campaign` — canonical in `Cowork/.claude/skills/`) as a plain chat markdown artifact with a user sign-off gate. Do **not** wire this server into any plugin. The ACA deployment is slated for teardown and the repo is retained only as a code archive in case an HTML-canvas host is ever needed (full deletion likely — see stromy-org `BACKLOG.md` ORG-076 for the deletion checklist). History: `infra-docs/ai/deliverable-canvas.md`.
+
 Resource-only MCP for strategic deliverable canvases (proposals, briefs, frameworks). Exposes templates, methodology guidance, and the canonical `deliverable-canvas` skill — **zero tools**. The chat artifact is the canvas; iteration happens in chat, not on the server. No per-user storage, no SQLite, no resume.
 
 Built with [FastMCP 3.0](https://gofastmcp.com) and managed with [uv](https://docs.astral.sh/uv/).
